@@ -1,0 +1,60 @@
+services:
+  ros2-dev:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: ros2-dev:latest
+    container_name: ros2_dev
+    privileged: true
+    cap_add:
+      - SYS_BOOT
+      - SYS_ADMIN
+    oom_score_adj: 1000
+    stop_grace_period: 60s
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+
+    env_file:
+      - ./envs/common.env
+      - ./envs/local.env
+      - ./envs/cloud.env
+
+    environment:
+      - TZ=Asia/Shanghai
+      - DISPLAY=${DISPLAY}
+      - GDK_SCALE=${GDK_SCALE:-1}
+      - GDK_DPI_SCALE=${GDK_DPI_SCALE:-1}
+      - XAUTHORITY=${XAUTHORITY:-/root/.Xauthority}
+      - NVIDIA_DRIVER_CAPABILITIES=${NVIDIA_DRIVER_CAPABILITIES:-all}
+
+    volumes:
+      - type: bind
+        source: /home/robot/easefuture/ros2_workspace
+        target: /home/robot/ros2_workspace
+      - type: bind
+        source: /var/log
+        target: /var/log
+      - type: bind
+        source: /var/robot
+        target: /var/robot
+      - type: bind
+        source: /tmp/.X11-unix
+        target: /tmp/.X11-unix
+      - type: bind
+        source: /etc/localtime
+        target: /etc/localtime
+      - type: bind
+        source: /var/run/dbus
+        target: /var/run/dbus
+
+    network_mode: host
+
+    expose:
+      - "${SSH_PORT_HOST:-2223}/tcp"
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "1000m"
+        max-file: "3"
