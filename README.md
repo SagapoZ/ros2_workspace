@@ -11,12 +11,18 @@ ros2_workspace
 │   └── docker-compose.yml          # Linux/WSL 宿主使用
 ├── docker/envs/                    # compose 使用的可选 env 文件
 ├── docs/
-│   └── windows_wsl_setup.md        # Windows / WSL 快速入门
+│   ├── windows_wsl_setup.md           # Windows / WSL 快速入门
+│   ├── manual_create_ros2_package.md  # 手动创建 ROS2 包教程
+│   ├── ros2_3day_crash_course.md      # ROS2 三天入门（ROS1 迁移向）
+│   └── clangd_setup.md                # clangd 配置（无构建脚本）
 ├── scripts/
 │   ├── dev.sh                      # Linux/macOS 通用脚本
 │   ├── dev.ps1                     # Windows PowerShell 脚本
+│   ├── build.sh                    # 构建工作空间（含 clangd 支持）
+│   ├── setup_workspace.sh          # 加载 ROS2 工作空间环境
 │   └── install_docker_ubuntu.sh    # Ubuntu Docker 一键安装
 ├── src/
+│   ├── ros2_learning/              # ROS2 学习示例包（发布者/订阅者）
 │   ├── robot_application/          # 推荐以 Git submodule 管理
 │   ├── robot_public/
 │   └── robot_foundation/
@@ -59,6 +65,7 @@ Windows 端如通过 **WSL2** 运行 Docker Engine，仅需在 WSL 中执行相�
 | 脚本                | 说明 |
 |--------------------|------|
 | `scripts/dev.sh`   | `build`（自动清理旧镜像/容器，默认基于 `osrf/ros:humble-desktop-full-jammy`，可自定义 `BASE_IMAGE`） / `up` / `down` / `restart` / `shell` / `logs` / `clean` |
+| `scripts/build.sh` | 构建工作空间（含 clangd 的 compile_commands.json，替代 `colcon build`） |
 | `scripts/dev.ps1`  | Windows PowerShell 包装器，通过 WSL 调用 `dev.sh` |
 | `scripts/install_docker_ubuntu.sh` | 安装 Docker Engine + compose 插件 |
 
@@ -92,6 +99,27 @@ Windows 端如通过 **WSL2** 运行 Docker Engine，仅需在 WSL 中执行相�
 - 在 WSL 内安装 Docker Engine + compose 插件；
 - 克隆仓库、构建镜像、启动容器；
 - 通过 SSH / VS Code Remote 进入容器并使用 RViz、Gazebo 等 GUI。
+
+## ROS2 学习工作空间
+
+工作空间已包含 `ros2_learning` 示例包，用于入门学习。进入容器后：
+
+```bash
+# 构建工作空间（推荐用 build.sh，自动生成 clangd 的 compile_commands.json）
+./scripts/build.sh
+# 或仅构建指定包：./scripts/build.sh --packages-select ros2_learning
+
+# 加载环境
+source install/setup.bash
+
+# 运行示例（需两个终端）
+ros2 run ros2_learning publisher   # 终端1
+ros2 run ros2_learning subscriber  # 终端2
+```
+
+**clangd 支持**：使用 `./scripts/build.sh` 构建，会在根目录生成合并后的 `compile_commands.json`。根目录已有 `.clangd` 和 `.vscode/settings.json`，无需在每个包下创建配置。详见 `docs/clangd_setup.md`。
+
+详见 `src/ros2_learning/README.md`。
 
 ## 常见命令
 

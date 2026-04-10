@@ -1,0 +1,4 @@
+# 工作空间默认配置：构建时自动启用 compile_commands 供 clangd 使用
+build:
+  cmake-args:
+    - -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
