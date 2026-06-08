@@ -23,27 +23,28 @@ public:
     * 
     * @param distance 
     */
-    void move_robot(float distance) {
-    RCLCPP_INFO(this->get_logger(), "请求让机器人移动%f", distance);
-
-    /*等待服务端上线*/
-    while (!client_->wait_for_service(std::chrono::seconds(1))) 
+    void move_robot(float distance) 
     {
-        //等待时检测rclcpp的状态
-        if (!rclcpp::ok())
+        RCLCPP_INFO(this->get_logger(), "请求让机器人移动%f", distance);
+
+        /*等待服务端上线*/
+        while (!client_->wait_for_service(std::chrono::seconds(1))) 
         {
-            RCLCPP_ERROR(this->get_logger(), "等待服务的过程中被打断...");
-            return;
+            //等待时检测rclcpp的状态
+            if (!rclcpp::ok())
+            {
+                RCLCPP_ERROR(this->get_logger(), "等待服务的过程中被打断...");
+                return;
+            }
+            RCLCPP_INFO(this->get_logger(), "等待服务端上线中");
         }
-        RCLCPP_INFO(this->get_logger(), "等待服务端上线中");
-    }
 
-    // 构造请求
-    auto request = std::make_shared<public_msgs::srv::MoveRobot::Request>();
-    request->distance = distance;
+        // 构造请求
+        auto request = std::make_shared<public_msgs::srv::MoveRobot::Request>();
+        request->distance = distance;
 
-    // 发送异步请求，然后等待返回，返回时调用回调函数
-    client_->async_send_request(request, std::bind(&ExampleInterfacesControl::result_callback_, this, std::placeholders::_1));
+        // 发送异步请求，然后等待返回，返回时调用回调函数
+        client_->async_send_request(request, std::bind(&ExampleInterfacesControl::result_callback_, this, std::placeholders::_1));
 };
 
 private:
@@ -70,7 +71,8 @@ private:
 };
     
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv) 
+{
     rclcpp::init(argc, argv);
     auto node = std::make_shared<ExampleInterfacesControl>("example_interfaces_control_01");
     /*这里调用了服务，让机器人向前移动5m*/

@@ -1,5 +1,9 @@
 /*创建一个机器人类，模拟真实机器人*/
 // 导入上一节定义的消息接口
+#include <cmath>
+#include <mutex>
+#include <thread>
+
 #include "public_msgs/msg/robot_status.hpp"
 #include "public_msgs/srv/move_robot.hpp"
 #include "rclcpp/rclcpp.hpp"
@@ -18,27 +22,52 @@ public:
    * @param distance
    * @return float
    */
-  float move_distance(float distance) {
-    status_ = public_msgs::msg::RobotStatus::STATUS_MOVEING;
-    target_pose_ += distance;
+  float move_distance(float distance)
+  {
+    if (std::fabs(distance) <= 0.01)
+    {
+      return get_current_pose();
+    }
+
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      status_ = public_msgs::msg::RobotStatus::STATUS_MOVEING;
+      target_pose_ += distance;
+    }
+
     // 当目标距离和当前距离大于0.01则持续向目标移动
-    while (fabs(target_pose_ - current_pose_) > 0.01) {
-      // 每一步移动当前到目标距离的1/10
-      float step = distance / fabs(distance) * fabs(target_pose_ - current_pose_) * 0.1;
-      current_pose_ += step;
-      std::cout << "移动了：" << step << "当前位置：" << current_pose_ << std::endl;
+    while (true) {
+      float step = 0.0;
+      float current_pose = 0.0;
+      {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (std::fabs(target_pose_ - current_pose_) <= 0.01) {
+          break;
+        }
+        // 每一步移动当前到目标距离的1/10
+        step = distance / std::fabs(distance) * std::fabs(target_pose_ - current_pose_) * 0.1;
+        current_pose_ += step;
+        current_pose = current_pose_;
+      }
+      std::cout << "移动了：" << step << "当前位置：" << current_pose << std::endl;
       // 当前线程休眠500ms
       std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
-    status_ = public_msgs::msg::RobotStatus::STATUS_STOP;
-    return current_pose_;
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      status_ = public_msgs::msg::RobotStatus::STATUS_STOP;
+      return current_pose_;
+    }
   }
   /**
    * @brief Get the current pose
    *
    * @return float
    */
-  float get_current_pose() { return current_pose_; }
+  float get_current_pose() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return current_pose_;
+  }
 
   /**
    * @brief Get the status
@@ -47,9 +76,13 @@ public:
    *  1 public_msgs::msg::RobotStatus::STATUS_MOVEING
    *  2 public_msgs::msg::RobotStatus::STATUS_STOP
    */
-  int get_status() { return status_; }
+  int get_status() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return status_;
+  }
 
 private:
+  mutable std::mutex mutex_;
   // 声明当前位置
   float current_pose_ = 0.0;
   // 目标距离
@@ -63,13 +96,17 @@ class ExampleInterfacesRobot : public rclcpp::Node {
   public:
     ExampleInterfacesRobot(std::string name) : Node(name) {
       RCLCPP_INFO(this->get_logger(), "节点已启动：%s.", name.c_str());
+      timer_callback_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+      service_callback_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
       /*创建move_robot服务*/
       move_robot_server_ = this->create_service<public_msgs::srv::MoveRobot>(
-        "move_robot", std::bind(&ExampleInterfacesRobot::handle_move_robot, this, std::placeholders::_1, std::placeholders::_2));
+        "move_robot", std::bind(&ExampleInterfacesRobot::handle_move_robot, this, std::placeholders::_1, std::placeholders::_2),
+        rclcpp::ServicesQoS(), service_callback_group_);
       /*创建发布者*/
       robot_status_publisher_ = this->create_publisher<public_msgs::msg::RobotStatus>("robot_status", 10);
       /*创建一个周期为500ms的定时器*/
-      timer_ = this->create_wall_timer(std::chrono::milliseconds(500), std::bind(&ExampleInterfacesRobot::timer_callback, this));
+      timer_ = this->create_wall_timer(std::chrono::milliseconds(500), std::bind(&ExampleInterfacesRobot::timer_callback, this),
+                                       timer_callback_group_);
     }
   
   private:
@@ -77,6 +114,8 @@ class ExampleInterfacesRobot : public rclcpp::Node {
     rclcpp::TimerBase::SharedPtr timer_; /*定时器，用于定时发布机器人位置*/
     rclcpp::Service<public_msgs::srv::MoveRobot>::SharedPtr move_robot_server_; /*移动机器人服务*/
     rclcpp::Publisher<public_msgs::msg::RobotStatus>::SharedPtr robot_status_publisher_; /*发布机器人位姿发布者*/
+    rclcpp::CallbackGroup::SharedPtr timer_callback_group_;
+    rclcpp::CallbackGroup::SharedPtr service_callback_group_;
   
     /**
      * @brief 500ms 定时回调函数，
@@ -111,7 +150,9 @@ class ExampleInterfacesRobot : public rclcpp::Node {
 int main(int argc, char** argv) {
   rclcpp::init(argc, argv);
   auto node = std::make_shared<ExampleInterfacesRobot>("example_interfaces_robot_01");
-  rclcpp::spin(node);
+  rclcpp::executors::MultiThreadedExecutor executor;
+  executor.add_node(node);
+  executor.spin();
   rclcpp::shutdown();
   return 0;
 }
