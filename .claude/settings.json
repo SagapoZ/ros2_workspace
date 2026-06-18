@@ -1,0 +1,55 @@
+{
+  "permissions": {
+    "defaultMode": "auto"
+  },
+  "enabledPlugins": {
+    "clangd-lsp@claude-plugins-official": true
+  },
+  "language": "zh-CN",
+  "skipAutoPermissionPrompt": true,
+  "skipDangerousModePermissionPrompt": true,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash(git push:*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo HEAD); REMOTE=$(git rev-parse --abbrev-ref --symbolic-full-name @{upstream} 2>/dev/null || echo ''); if [ -n \"$REMOTE\" ]; then echo '=== 待推送提交 ==='; git log \"${REMOTE}..HEAD\" --oneline; echo ''; echo '=== 变更文件 ==='; git diff --stat \"${REMOTE}..HEAD\"; else echo '(无上游分支)'; fi"
+          },
+          {
+            "type": "prompt",
+            "prompt": "⚠️ 代码审查要求：在执行 git push 之前，你必须先用 code-reviewing skill 审查以上待推送提交。审查流程：\n1. 用 `git diff origin/$(git rev-parse --abbrev-ref HEAD)..HEAD` 获取完整变更\n2. 按 code-reviewing skill 优先级（🔴严重 > 🟡主要 > 🔵次要）审查所有变更\n3. 如发现 🔴严重问题，明确告知用户先修复，不要推送；如仅有 🟡/🔵 问题，告知用户后推送\n4. 审查通过后再执行 git push"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "./.claude/hooks/block-dangerous.sh" }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          { "type": "command", "command": "./.claude/hooks/protect-files.sh" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          { "type": "command", "command": "./.claude/hooks/auto-format.sh" },
+          { "type": "command", "command": "./.claude/hooks/lint-check.sh" }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "./.claude/hooks/audit-log.sh" }
+        ]
+      }
+    ]
+  }
+}

@@ -4,7 +4,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfileros2.dockerfile
     image: family_robot_ros2:ros2
-    container_name: massage_robot_ros2
+    container_name: ros2_dev
     privileged: true
     cap_add:
       - SYS_BOOT

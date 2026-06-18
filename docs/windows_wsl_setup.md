@@ -57,15 +57,15 @@ cd ros2_workspace
 ## 4. 构建镜像
 
 ```bash
-./scripts/dev.sh build
+./build_docker.sh build
 ```
 
-若构建失败需要重试，脚本会自动清理旧镜像/容器，你也可以单独执行 `./scripts/dev.sh clean`。默认基镜像是 `osrf/ros:humble-desktop-full-jammy`；如果需要换源或镜像，执行 `BASE_IMAGE=<可访问镜像> ./scripts/dev.sh build`（例如 `BASE_IMAGE=mirror.ccs.tencentyun.com/osrf/ros:humble-desktop-full-jammy`）。
+若构建失败需要重试，脚本会自动清理旧镜像/容器，你也可以单独执行 `./build_docker.sh clean`。默认基镜像是 `osrf/ros:humble-desktop-full-jammy`；如果需要换源或镜像，执行 `BASE_IMAGE=<可访问镜像> ./build_docker.sh build`（例如 `BASE_IMAGE=mirror.ccs.tencentyun.com/osrf/ros:humble-desktop-full-jammy`）。
 
 ## 5. 启动容器
 
 ```bash
-./scripts/dev.sh up
+./build_docker.sh up
 # 等价：docker compose -f docker/docker-compose.yml up -d
 ```
 
@@ -96,4 +96,4 @@ docker exec -it ros2_dev bash
 docker compose -f docker/docker-compose.yml down
 ```
 
-在 WSL 中执行 `./scripts/dev.sh`；若想直接在 Windows PowerShell 中操作，可运行 `.\scripts\dev.ps1 build|up|down`，脚本会自动调用 WSL。无需 Docker Desktop，所有容器与构建流程全部在 WSL 内完成。
+在 WSL 中执行 `./build_docker.sh`；若想直接在 Windows PowerShell 中操作，可运行 `.\scripts\dev.ps1 build|up|down`，脚本会自动调用 WSL。无需 Docker Desktop，所有容器与构建流程全部在 WSL 内完成。

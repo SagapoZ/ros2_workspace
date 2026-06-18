@@ -40,6 +40,14 @@ RUN apt update && apt install -y --no-install-recommends \
     bluez \
     bluetooth \
     libnlopt-cxx-dev \
+    # 编译与调试工具 (VS Code C++ 开发/调试)
+    build-essential \
+    gdb \
+    gdbserver \
+    clangd \
+    ccache \
+    python3-colcon-common-extensions \
+    python3-rosdep \
     language-pack-zh-hans \
     language-pack-zh-hans-base \
     fonts-droid-fallback \
@@ -64,6 +72,8 @@ RUN apt update && apt install -y --no-install-recommends \
 RUN echo "source /opt/ros/jazzy/setup.bash" >> /root/.bashrc && \
     echo "source /opt/ros/jazzy/setup.bash" >> /root/.profile && \
     echo "if [ -f /root/.bashrc ]; then source /root/.bashrc; fi" > /root/.bash_profile && \
+    # 让 colcon 读取仓库根目录的 colcon_defaults.yaml（clangd 的 compile_commands.json 依赖它）
+    echo "export COLCON_DEFAULTS_FILE=/home/robot/ros2_workspace/colcon_defaults.yaml" >> /root/.bashrc && \
     # Gazebo 别名
     echo "alias gazebo='gz sim'" >> /root/.bashrc && \
     echo "alias gzserver='gz sim -s'" >> /root/.bashrc && \

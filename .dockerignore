@@ -1,0 +1,33 @@
+# 构建上下文是仓库根目录，排除不需要进镜像的内容，加快 build / 减小 context
+
+# colcon 构建产物
+build/
+install/
+log/
+
+# clangd / IDE
+compile_commands.json
+.clangd
+.vscode/
+.idea/
+.codex
+
+# git 与 CI
+.git/
+.gitignore
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+
+# 编辑器临时文件
+*.swp
+*.swo
+
+# Claude / 文档（不需要进镜像）
+.claude/
+docs/
