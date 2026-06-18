@@ -21,3 +21,7 @@ dist/
 *.swo
 .codex
 .clangd
+
+#agent
+.claude/logs
+.claude/settings.local.json
