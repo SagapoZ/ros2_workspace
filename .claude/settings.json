@@ -26,13 +26,29 @@
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": "./.claude/hooks/block-dangerous.sh" }
+          {
+            "type": "command",
+            "command": "./.claude/hooks/block-dangerous.sh"
+          }
         ]
       },
       {
         "matcher": "Write|Edit",
         "hooks": [
-          { "type": "command", "command": "./.claude/hooks/protect-files.sh" }
+          {
+            "type": "command",
+            "command": "./.claude/hooks/protect-files.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ./.claude/skills/ros2-engineering-skills/scripts/skill_validate_hook.py",
+            "timeout": 10
+          }
         ]
       }
     ],
@@ -40,14 +56,34 @@
       {
         "matcher": "Write|Edit",
         "hooks": [
-          { "type": "command", "command": "./.claude/hooks/auto-format.sh" },
-          { "type": "command", "command": "./.claude/hooks/lint-check.sh" }
+          {
+            "type": "command",
+            "command": "./.claude/hooks/auto-format.sh"
+          },
+          {
+            "type": "command",
+            "command": "./.claude/hooks/lint-check.sh"
+          }
         ]
       },
       {
         "matcher": "*",
         "hooks": [
-          { "type": "command", "command": "./.claude/hooks/audit-log.sh" }
+          {
+            "type": "command",
+            "command": "./.claude/hooks/audit-log.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ./.claude/skills/ros2-engineering-skills/scripts/skill_stop_hook.py",
+            "timeout": 15
+          }
         ]
       }
     ]

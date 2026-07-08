@@ -17,9 +17,11 @@ cd "$ROOT_DIR"
 
 # —— 配置（与 docker-compose.ros2.yml 保持一致）——
 COMPOSE_FILE="${COMPOSE_FILE:-docker/docker-compose.ros2.yml}"
-IMAGE_NAME="${IMAGE_NAME:-family_robot_ros2:ros2}"
-CONTAINER_NAME="${CONTAINER_NAME:-ros2_dev}"
-SSH_PORT="${SSH_PORT:-2223}"
+IMAGE_NAME="${IMAGE_NAME:-family_robot_ros2:humble}"
+CONTAINER_NAME="${CONTAINER_NAME:-ros2-humble-dev}"
+SSH_PORT="${SSH_PORT:-22223}"
+# 容器内日常开发用户（与宿主机 UID/GID 对齐，见 Dockerfileros2.dockerfile），避免 exec 进去用 root 建文件
+EXEC_USER="${EXEC_USER:-robot}"
 # 推送/拉取镜像用的远程仓库，例如 REGISTRY=ccr.ccs.tencentyun.com/yourns
 REGISTRY="${REGISTRY:-}"
 
@@ -35,8 +37,10 @@ require_compose_file() {
 print_access_info() {
   echo ""
   echo ">>> 容器 ${CONTAINER_NAME} 已就绪。"
-  echo "    进入容器:  ./build_docker.sh shell"
-  echo "    SSH 连接:  ssh root@localhost -p ${SSH_PORT}  (密码: robot)"
+  echo "    进入容器 (${EXEC_USER} 用户，容器内建的文件权限与宿主机一致):  ./build_docker.sh shell"
+  echo "    进入容器 (root):  ./build_docker.sh rootshell"
+  echo "    SSH 连接:  ssh ${EXEC_USER}@localhost -p ${SSH_PORT}  (密码: ${EXEC_USER})"
+  echo "    SSH 连接 (root):  ssh root@localhost -p ${SSH_PORT}  (密码: robot)"
   echo "    查看日志:  ./build_docker.sh logs"
 }
 
@@ -76,7 +80,12 @@ case "$CMD" in
     ;;
 
   shell|exec)
-    echo ">>> 进入 ${CONTAINER_NAME} ..."
+    echo ">>> 以用户 ${EXEC_USER} 进入 ${CONTAINER_NAME} ..."
+    docker exec -it -u "${EXEC_USER}" "${CONTAINER_NAME}" bash
+    ;;
+
+  rootshell)
+    echo ">>> 以 root 进入 ${CONTAINER_NAME} ..."
     docker exec -it "${CONTAINER_NAME}" bash
     ;;
 
@@ -118,7 +127,8 @@ ROS2 开发环境管理脚本（Linux / WSL2）
 
   up        一键部署：构建镜像（首次）+ 启动容器   <- 常用
   rebuild   强制重新构建镜像并重启容器
-  shell     进入容器
+  shell     进入容器（默认 ${EXEC_USER} 用户，建的文件权限与宿主机一致）
+  rootshell 进入容器（root 用户）
   logs      查看容器日志
   down      停止并移除容器
   restart   重启容器

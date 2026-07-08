@@ -3,8 +3,8 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfileros2.dockerfile
-    image: family_robot_ros2:ros2
-    container_name: ros2_dev
+    image: family_robot_ros2:humble
+    container_name: ros2-humble-dev
     privileged: true
     cap_add:
       - SYS_BOOT
@@ -14,7 +14,7 @@ services:
     restart: unless-stopped
     stdin_open: true
     tty: true
-    working_dir: /home/robot/ros2_workspace
+    working_dir: /home/robot/MoxibustionRobotGroup/
 
     env_file:
       - ./envs/common.env
@@ -48,17 +48,20 @@ services:
       - type: bind
         source: /var/run/dbus
         target: /var/run/dbus
+      - type: bind
+        source: ${HOME}/.ssh
+        target: /home/dev/.ssh
+        read_only: true
+      - type: bind
+        source: ${HOME}/.gitconfig
+        target: /home/dev/.gitconfig
+        read_only: true
 
     # 使用 host 网络模式时，容器直接使用主机网络
-    # SSH 端口 2223 会直接绑定到 WSL 上
-    # 从 Windows 连接: ssh root@localhost -p 2223 (密码: robot)
+    # SSH 端口 22223 会直接绑定到 WSL 上
+    # 从 Windows 连接 (日常开发用，建的文件权限与宿主机一致): ssh robot@localhost -p 22223 (密码: robot)
+    # 从 Windows 连接 (root): ssh root@localhost -p 22223 (密码: robot)
     network_mode: host
-
-    # 注意: 在 host 网络模式下，ports/expose 配置无效
-    # 容器内的端口直接暴露在主机上
-    # 如果需要使用端口映射，请注释掉 network_mode: host 并取消下面的注释:
-    # ports:
-    #   - "${SSH_PORT_HOST:-2223}:2223"
 
     logging:
       driver: json-file

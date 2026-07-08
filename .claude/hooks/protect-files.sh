@@ -159,8 +159,8 @@ for pattern in "${P1_PATH_PATTERNS[@]}"; do
     fi
 done
 
-# P1 额外检查: 全局 Claude 配置 (不在项目工作区内)
-if [[ "$FILE_PATH" == *".claude/settings.json"* ]] && [[ "$FILE_PATH" != *"family_robot_workspace"* ]]; then
+# P1 额外检查: 全局 Claude 配置 (仅拦截 HOME 下的 ~/.claude/settings.json，放行项目内配置)
+if [[ "$ABSOLUTE_PATH" == "$HOME/.claude/settings.json" ]]; then
     block "P1-核心配置" "禁止修改全局 Claude 配置 (~/.claude/settings.json)"
 fi
 

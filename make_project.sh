@@ -3,7 +3,7 @@
 #
 # 执行 colcon build / colcon test，自动判断运行环境：
 #   - 已在容器内（如 VSCode 远程到容器开发）：直接本地编译；
-#   - 在宿主机：通过 docker exec 进 ros2_dev 容器编译（容器需已启动）。
+#   - 在宿主机：通过 docker exec 进 ros2-humble-dev 容器编译（容器需已启动）。
 #
 # 常用:
 #     ./make_project.sh                 # 编译全部包
@@ -17,10 +17,10 @@ ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 cd "$ROOT_DIR"
 
 # —— 配置（与 docker-compose.ros2.yml 保持一致）——
-CONTAINER_NAME="${CONTAINER_NAME:-ros2_dev}"
-ROS_DISTRO="${ROS_DISTRO:-jazzy}"
+CONTAINER_NAME="${CONTAINER_NAME:-ros2-humble-dev}"
+ROS_DISTRO="${ROS_DISTRO:-humble}"
 # 容器内工作区路径（compose 的 working_dir）
-WS_DIR="${WS_DIR:-/home/robot/ros2_workspace}"
+WS_DIR="${WS_DIR:-/home/robot/MoxibustionRobotGroup/ros2_workspace}"
 
 # 判断当前是否已在容器内运行（VSCode 远程到容器开发的场景）
 in_container() {

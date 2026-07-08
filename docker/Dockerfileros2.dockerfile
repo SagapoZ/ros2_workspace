@@ -1,14 +1,23 @@
-ARG BASE_IMAGE=osrf/icra2023_ros2_gz_tutorial:roscon2024_tutorial_nvidia
+ARG BASE_IMAGE=osrf/ros:humble-desktop-full
 FROM ${BASE_IMAGE}
 
 SHELL ["/bin/bash", "-c"]
 
 ENV DEBIAN_FRONTEND=noninteractive \
-    ROS_DISTRO=jazzy \
+    ROS_DISTRO=humble \
     RMW_IMPLEMENTATION=rmw_cyclonedds_cpp \
     LANG=zh_CN.UTF-8 \
     LC_ALL=zh_CN.UTF-8 \
     DISPLAY=:0
+
+# 非 root 用户，UID/GID 需与宿主机 robot 用户一致（宿主机: id robot -> uid=1000 gid=1000），
+# 这样容器内该用户在挂载目录（/home/robot、/var/robot ...）中创建的文件，在宿主机上也是 robot 而不是 root
+ARG USERNAME=robot
+ARG USER_UID=1000
+ARG USER_GID=1000
+# 该用户的家目录不能选 /home/robot —— 那个路径在运行时会被 docker-compose 挂载成宿主机的
+# /home/robot/easefuture/，用作 home 会导致 .bashrc 等被挂载覆盖掉，登录环境全部丢失
+ENV USER_HOME=/home/dev
 
 USER root
 
@@ -29,6 +38,7 @@ RUN apt update && apt install -y --no-install-recommends \
     wget \
     git \
     git-lfs \
+    sudo \
     python3-pip \
     python3-venv \
     python3-apt \
@@ -55,6 +65,16 @@ RUN apt update && apt install -y --no-install-recommends \
     ttf-wqy-microhei \
     fonts-arphic-ukai \
     fonts-arphic-uming \
+    # RMW 实现 (base image 默认不带 cyclonedds)
+    ros-humble-rmw-cyclonedds-cpp \
+    # ros2_control 相关
+    ros-humble-ros2-control \
+    ros-humble-ros2-controllers \
+    ros-humble-gazebo-ros2-control \
+    ros-humble-gazebo-ros-pkgs \
+    ros-humble-rqt-controller-manager \
+    ros-humble-rqt-joint-trajectory-controller \
+    ros-humble-xacro \
     # SSH 服务
     openssh-server && \
     # locale 配置
@@ -69,15 +89,12 @@ RUN apt update && apt install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/*
 
 # ROS 2 环境配置（合并 bashrc 相关配置）
-RUN echo "source /opt/ros/jazzy/setup.bash" >> /root/.bashrc && \
-    echo "source /opt/ros/jazzy/setup.bash" >> /root/.profile && \
-    echo "if [ -f /root/.bashrc ]; then source /root/.bashrc; fi" > /root/.bash_profile && \
+RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc && \
+    echo "source /opt/ros/humble/setup.bash" >> /root/.profile && \
+    echo "if [ -f /root/.bashrc ]; then source /root/.bashrc; fi" > /root/.bash_profile
     # 让 colcon 读取仓库根目录的 colcon_defaults.yaml（clangd 的 compile_commands.json 依赖它）
-    echo "export COLCON_DEFAULTS_FILE=/home/robot/ros2_workspace/colcon_defaults.yaml" >> /root/.bashrc && \
-    # Gazebo 别名
-    echo "alias gazebo='gz sim'" >> /root/.bashrc && \
-    echo "alias gzserver='gz sim -s'" >> /root/.bashrc && \
-    echo "alias gzclient='gz sim -g'" >> /root/.bashrc
+    #echo "export COLCON_DEFAULTS_FILE=/home/robot/MoxibustionRobotGroup/ros2_workspace/colcon_defaults.yaml" >> /root/.bashrc
+    # 注：Gazebo Classic 11（Humble 默认仿真器）自带 gazebo/gzserver/gzclient 命令，无需别名
 
 # 机器人目录
 RUN mkdir -p /var/robot/log /var/robot/product /var/robot/calibration && \
@@ -85,7 +102,7 @@ RUN mkdir -p /var/robot/log /var/robot/product /var/robot/calibration && \
 
 # SSH 配置
 RUN mkdir -p /run/sshd && \
-    sed -i "s/#Port 22/Port 2223/g" /etc/ssh/sshd_config && \
+    sed -i "s/#Port 22/Port 22223/g" /etc/ssh/sshd_config && \
     sed -i "s/#PermitRootLogin prohibit-password/PermitRootLogin yes/g" /etc/ssh/sshd_config && \
     echo "root:robot" | chpasswd
 
@@ -113,12 +130,29 @@ RUN curl -sS https://starship.rs/install.sh | sh -s -- --yes && \
       'style = "bold green"' \
       > /root/.config/starship.toml
 
+# 创建与宿主机 UID/GID 对齐的 robot 用户，日常开发用它登录/exec，容器里创建的文件在宿主机上就是 robot 权限而不是 root
+RUN groupadd -g ${USER_GID} ${USERNAME} && \
+    useradd -m -d ${USER_HOME} -u ${USER_UID} -g ${USER_GID} -s /bin/bash ${USERNAME} && \
+    usermod -aG sudo ${USERNAME} && \
+    echo "${USERNAME}:${USERNAME}" | chpasswd && \
+    echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/${USERNAME} && \
+    chmod 0440 /etc/sudoers.d/${USERNAME} && \
+    echo "source /opt/ros/humble/setup.bash" >> ${USER_HOME}/.bashrc && \
+    echo "source /opt/ros/humble/setup.bash" >> ${USER_HOME}/.profile && \
+    echo "if [ -f ${USER_HOME}/.bashrc ]; then source ${USER_HOME}/.bashrc; fi" > ${USER_HOME}/.bash_profile && \
+    echo "export COLCON_DEFAULTS_FILE=/home/robot/MoxibustionRobotGroup/ros2_workspace/colcon_defaults.yaml" >> ${USER_HOME}/.bashrc && \
+    echo 'if [[ $- == *i* ]] && [ -d /home/robot/MoxibustionRobotGroup/ ]; then cd /home/robot/MoxibustionRobotGroup/; fi' >> ${USER_HOME}/.bashrc && \
+    echo 'eval "$(starship init bash)"' >> ${USER_HOME}/.bashrc && \
+    mkdir -p ${USER_HOME}/.config && \
+    cp /root/.config/starship.toml ${USER_HOME}/.config/starship.toml && \
+    chown -R ${USERNAME}:${USERNAME} ${USER_HOME}
+
 WORKDIR /workspace
 
-RUN echo 'if [[ $- == *i* ]] && [ -d /home/robot/ros2_workspace ]; then cd /home/robot/ros2_workspace; fi' >> /root/.bashrc
+RUN echo 'if [[ $- == *i* ]] && [ -d /home/robot/MoxibustionRobotGroup/ ]; then cd /home/robot/MoxibustionRobotGroup/; fi' >> /root/.bashrc
 
-WORKDIR /home/robot/ros2_workspace
+WORKDIR /home/robot/MoxibustionRobotGroup/
 
-EXPOSE 2223
+EXPOSE 22223
 
 CMD ["/usr/sbin/sshd", "-D"]
